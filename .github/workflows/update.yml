@@ -1,8 +1,8 @@
-name: Auto-Update KDE Connect Nightly Cask
+name: Auto-update KDE Connect Nightly Cask
 
 on:
   schedule:
-    - cron: "0 * * * *" # every hour
+    - cron: "0 * * * *"  # every hour
   workflow_dispatch:
 
 jobs:
@@ -11,10 +11,10 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      
-      - name: Install Dependencies
+
+      - name: Install dependencies
         run: sudo apt update && sudo apt install -y curl grep sed coreutils
-        
+
       - name: Fetch latest build
         id: fetch
         run: |
@@ -24,19 +24,19 @@ jobs:
           full_url="${URL}${latest}"
           echo "version=$version" >> $GITHUB_OUTPUT
           echo "url=$full_url" >> $GITHUB_OUTPUT
-      
+
       - name: Download .dmg and calculate SHA256
         id: hash
         run: |
           curl -L "${{ steps.fetch.outputs.url }}" -o kdeconnect.dmg
           sha256=$(sha256sum kdeconnect.dmg | awk '{print $1}')
           echo "sha256=$sha256" >> $GITHUB_OUTPUT
-      
+
       - name: Update Cask file
         run: |
           sed -i "s/^  version \".*\"/  version \"${{ steps.fetch.outputs.version }}\"/" Casks/kdeconnect-nightly.rb
           sed -i "s/^  sha256 \".*\"/  sha256 \"${{ steps.hash.outputs.sha256 }}\"/" Casks/kdeconnect-nightly.rb
-      
+
       - name: Commit and push if changed
         run: |
           git config user.name "GitHub Actions"
