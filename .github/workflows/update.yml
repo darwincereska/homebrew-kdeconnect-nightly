@@ -34,7 +34,7 @@ jobs:
           fi
           
           echo "Latest file found: $latest"
-          version=$(echo "$latest" | grep -o '[0-9]\+')
+          version=$(echo "$latest" | sed -n 's/.*kdeconnect-kde-master-\([0-9]\+\)-.*/\1/p')
           
           if [ -z "$version" ]; then
             echo "Error: Could not extract version number"
