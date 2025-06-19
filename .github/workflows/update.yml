@@ -23,18 +23,55 @@ jobs:
         id: fetch
         run: |
           URL="https://cdn.kde.org/ci-builds/network/kdeconnect-kde/master/macos-arm64/"
+          echo "Fetching from: $URL"
+          
+          # Fetch and parse the latest build
           latest=$(curl -s "$URL" | grep -o 'kdeconnect-kde-master-[0-9]\+-macos-clang-arm64\.dmg' | sort -V | tail -n1)
+          
+          if [ -z "$latest" ]; then
+            echo "Error: No DMG files found"
+            exit 1
+          fi
+          
+          echo "Latest file found: $latest"
           version=$(echo "$latest" | grep -o '[0-9]\+')
+          
+          if [ -z "$version" ]; then
+            echo "Error: Could not extract version number"
+            exit 1
+          fi
+          
           full_url="${URL}${latest}"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "url=${full_url}" >> "$GITHUB_OUTPUT"
+          echo "Version: $version"
+          echo "URL: $full_url"
+          
+          # Set outputs safely
+          {
+            echo "version=${version}"
+            echo "url=${full_url}"
+          } >> "${GITHUB_OUTPUT:-/dev/null}"
       
       - name: Download .dmg and calculate SHA256
         id: hash
         run: |
-          curl -L "${{ steps.fetch.outputs.url }}" -o kdeconnect.dmg
+          url="${{ steps.fetch.outputs.url }}"
+          echo "Downloading from: $url"
+          
+          if ! curl -L "$url" -o kdeconnect.dmg; then
+            echo "Error: Failed to download DMG file"
+            exit 1
+          fi
+          
+          if [ ! -f kdeconnect.dmg ]; then
+            echo "Error: DMG file not found after download"
+            exit 1
+          fi
+          
           sha256=$(sha256sum kdeconnect.dmg | awk '{print $1}')
-          echo "sha256=$sha256" >> "$GITHUB_OUTPUT"
+          echo "SHA256: $sha256"
+          
+          # Set output safely
+          echo "sha256=$sha256" >> "${GITHUB_OUTPUT:-/dev/null}"
       
       - name: Update Cask file
         run: |
