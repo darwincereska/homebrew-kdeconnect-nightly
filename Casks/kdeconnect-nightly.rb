@@ -9,5 +9,5 @@ cask "kdeconnect-nightly" do
   desc "Nightly build of KDE Connect for MacOS (ARM)"
   homepage "https://kdeconnect.kde.org"
   
-  app "kdeconnect-indicator.app"
+  app "KDE Connect.app"
 end
