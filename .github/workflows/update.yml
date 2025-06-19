@@ -1,0 +1,46 @@
+name: Auto-Update KDE Connect Nightly Cask
+
+on:
+  schedule:
+    - cron: "0 * * * *" # every hour
+  workflow_dispatch:
+
+jobs:
+  update-cask:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Install Dependencies
+        run: sudo apt update && sudo apt install -y curl grep sed coreutils
+        
+      - name: Fetch latest build
+        id: fetch
+        run: |
+          URL="https://cdn.kde.org/ci-builds/network/kdeconnect-kde/master/macos-arm64/"
+          latest=$(curl -s "$URL" | grep -o 'kdeconnect-kde-master-[0-9]\+-macos-clang-arm64.dmg' | sort -V | tail -n1)
+          version=$(echo "$latest" | grep -o '[0-9]\+')
+          full_url="${URL}${latest}"
+          echo "version=$version" >> $GITHUB_OUTPUT
+          echo "url=$full_url" >> $GITHUB_OUTPUT
+      
+      - name: Download .dmg and calculate SHA256
+        id: hash
+        run: |
+          curl -L "${{ steps.fetch.outputs.url }}" -o kdeconnect.dmg
+          sha256=$(sha256sum kdeconnect.dmg | awk '{print $1}')
+          echo "sha256=$sha256" >> $GITHUB_OUTPUT
+      
+      - name: Update Cask file
+        run: |
+          sed -i "s/^  version \".*\"/  version \"${{ steps.fetch.outputs.version }}\"/" Casks/kdeconnect-nightly.rb
+          sed -i "s/^  sha256 \".*\"/  sha256 \"${{ steps.hash.outputs.sha256 }}\"/" Casks/kdeconnect-nightly.rb
+      
+      - name: Commit and push if changed
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add Casks/kdeconnect-nightly.rb
+          git diff --cached --quiet || git commit -m "Auto-update to build ${{ steps.fetch.outputs.version }}"
+          git push
